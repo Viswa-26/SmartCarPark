@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find Nearest Parking</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f3f4f6;
+        }
+        h1 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        #map {
+            width: 90%;
+            max-width: 600px;
+            height: 400px;
+            margin-top: 20px;
+            border-radius: 10px;
+        }
+        .btn {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: 0.3s;
+            width: 90%;
+            max-width: 300px;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .info {
+            margin-top: 20px;
+            font-size: 1.2rem;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Find the Nearest Parking</h1>
+    <button class="btn" onclick="findNearestLocation()">Find My Nearest Parking</button>
+    <div class="info" id="info">Waiting for your action...</div>
+    <div id="map"></div>
+
+    <script>
+        let map, userMarker, directionsRenderer, directionsService;
+
+        // Predefined parking locations
+        const locations = [
+            { name: "Sunshine Parking", lat: 11.089439417548782, lng: 77.13256554624226 },
+            { name: "Yuvaraj Parking", lat: 11.080409564315245, lng: 77.11687356865099 },
+            { name: "Rithish Parking", lat: 11.107893850701585, lng: 77.1764379892275 },
+            { name: "Viswa Parking", lat: 11.121509366477168, lng: 77.17033264614362 },
+        ];
+
+        // Handle Google Maps load error
+        function handleError() {
+            alert("Google Maps failed to load. Please try again later.");
+        }
+
+        function initMap() {
+            console.log('Google Map initialized.');
+
+            // Initialize the map and directions services
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 14,
+                center: { lat: 13.0449408, lng: 80.19968 }, // Default center
+            });
+
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer({ map: map });
+        }
+
+        function findNearestLocation() {
+            // Ensure Geolocation is supported
+            if (!navigator.geolocation) {
+                alert("Geolocation is not supported by your browser.");
+                return;
+            }
+
+            // Get the user's current location
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const userLat = position.coords.latitude;
+                    const userLng = position.coords.longitude;
+
+                    // Find the nearest location
+                    let nearest = null;
+                    let minDistance = Infinity;
+
+                    locations.forEach((location) => {
+                        const distance = haversineDistance(
+                            { lat: userLat, lng: userLng },
+                            { lat: location.lat, lng: location.lng }
+                        );
+
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            nearest = location;
+                        }
+                    });
+
+                    // Display the nearest parking location
+                    const infoDiv = document.getElementById("info");
+                    infoDiv.innerHTML = `Nearest Parking: <b>${nearest.name}</b>. Calculating route...`;
+
+                    // Recenter the map to the user's location
+                    map.setCenter({ lat: userLat, lng: userLng });
+                    map.setZoom(15); // Adjust zoom level
+
+                    // Display the route on the map
+                    displayRoute(userLat, userLng, nearest);
+
+                    // Add a user marker
+                    if (userMarker) userMarker.setMap(null);
+                    userMarker = new google.maps.Marker({
+                        position: { lat: userLat, lng: userLng },
+                        map: map,
+                        title: "Your Location",
+                        icon: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+                    });
+                },
+                (error) => {
+                    alert("Unable to retrieve your location. Please try again.");
+                }
+            );
+        }
+
+        // Haversine formula to calculate the distance between two points
+        function haversineDistance(coord1, coord2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = deg2rad(coord2.lat - coord1.lat);
+            const dLng = deg2rad(coord2.lng - coord1.lng);
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(deg2rad(coord1.lat)) *
+                    Math.cos(deg2rad(coord2.lat)) *
+                    Math.sin(dLng / 2) *
+                    Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; // Distance in km
+        }
+
+        function deg2rad(deg) {
+            return deg * (Math.PI / 180);
+        }
+
+        function displayRoute(userLat, userLng, nearest) {
+            const origin = { lat: userLat, lng: userLng };
+            const destination = { lat: nearest.lat, lng: nearest.lng };
+
+            directionsService.route(
+                {
+                    origin: origin,
+                    destination: destination,
+                    travelMode: google.maps.TravelMode.DRIVING, // Change to WALKING, TRANSIT, etc., if needed
+                },
+                (response, status) => {
+                    if (status === google.maps.DirectionsStatus.OK) {
+                        directionsRenderer.setDirections(response);
+                    } else {
+                        alert("Directions request failed due to " + status);
+                    }
+                }
+            );
+        }
+    </script>
+
+    <!-- Load Google Maps API with Directions library -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCfg8LiEREsiTG-VpNmv91qdm_8St-zbpk&callback=initMap&libraries=geometry&async=true&defer=true"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
